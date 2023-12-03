@@ -7,6 +7,9 @@
 
 import { list } from '@keystone-6/core';
 import { allowAll } from '@keystone-6/core/access';
+import path from 'path';
+import fs from 'fs';
+import { createRandomString } from './assets/js/random';
 
 // see https://keystonejs.com/docs/fields/overview for the full list of fields
 //   this is a few common fields for an example
@@ -28,7 +31,8 @@ import { document } from '@keystone-6/fields-document';
 // when using Typescript, you can refine your types to a stricter subset by importing
 // the generated types from '.keystone/types'
 import type { Lists } from '.keystone/types';
-import { COLOR_MODE, ORDER_STATE } from './assets/js/enums';
+import { COLOR_MODE, ORDER_STATE, PAGE_SIZE } from './assets/js/enums';
+import { getFilesizeInBytes } from './assets/js/file';
 
 export const lists: Lists = {
   User: list({
@@ -171,14 +175,22 @@ export const lists: Lists = {
         defaultValue: ORDER_STATE[ORDER_STATE.WAITING_FOR_PAYMENT],
         // db: { map: 'my_select' },
         validation: { isRequired: true, },
-        isIndexed: 'unique',
+        isIndexed: true,
         ui: { displayMode: 'select' },
       }),
       paymentAuthority: text(),
+      totalPrice: integer(),
       // this can be helpful to find out all the Posts associated with a Tag
       AddressInfo: relationship({ ref: 'AddressInfo.Order', many: false }),
       Files: relationship({ ref: 'File.Order', many: true }),
     },
+    hooks: {
+      resolveInput: ({ resolvedData }) => {
+        resolvedData.paymentAuthority = createRandomString(5);
+
+        return resolvedData;
+      }
+    }
   }),
   File: list({
     access: allowAll,
@@ -195,19 +207,50 @@ export const lists: Lists = {
         defaultValue: COLOR_MODE[COLOR_MODE.BLACK_WHITE_LASER],
         // db: { map: 'my_select' },
         validation: { isRequired: true, },
-        isIndexed: 'unique',
+        isIndexed: true,
         ui: { displayMode: 'select' },
       }),
       data: file({ storage: 'fileStorage' }),
+      dataAsBase64: text(),
       description: text(),
       double: checkbox(),
       name: text(),
       pageCount: integer(),
-      pageSize: integer(),
+      pageSize: select({
+        type: 'enum',
+        options: [
+          { label: 'A5', value: PAGE_SIZE[PAGE_SIZE.A5], },
+          { label: 'A4', value: PAGE_SIZE[PAGE_SIZE.A4], },
+          { label: 'A3', value: PAGE_SIZE[PAGE_SIZE.A3], },
+        ],
+        defaultValue: PAGE_SIZE[PAGE_SIZE.A4],
+        // db: { map: 'my_select' },
+        validation: { isRequired: true, },
+        isIndexed: true,
+        ui: { displayMode: 'select' },
+      }),
       series: integer(),
       size: integer(),
       type: text(),
       Order: relationship({ ref: 'Order.Files', many: false }),
+    },
+    hooks: {
+      resolveInput: ({ resolvedData }) => {
+        const { name, dataAsBase64, data } = resolvedData;
+        if (dataAsBase64) {
+          const validBase64 = dataAsBase64.split(',')[1];
+          const uniqueName = name.replace(/(\.[\w\d_-]+)$/i, `_${createRandomString(7)}$1`);
+          // const data = Buffer.from(dataAsBase64, 'base64');
+          const address = path.join(process.cwd(), 'public/files', uniqueName);
+          fs.writeFileSync(address, validBase64, 'base64');
+          data.filename = uniqueName;
+          data.filesize = getFilesizeInBytes(address);
+          resolvedData.dataAsBase64 = '';
+          // console.log({ data });
+        }
+
+        return resolvedData;
+      }
     }
   }),
   AddressInfo: list({

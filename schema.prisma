@@ -40,29 +40,35 @@ model Tag {
 model Order {
   id               String       @id @default(cuid())
   createdAt        DateTime?    @default(now())
-  status           String       @unique @default("WAITING_FOR_PAYMENT")
+  status           String       @default("WAITING_FOR_PAYMENT")
   paymentAuthority String       @default("")
+  totalPrice       Int?
   AddressInfo      AddressInfo? @relation("AddressInfo_Order")
   Files            File[]       @relation("File_Order")
+
+  @@index([status])
 }
 
 model File {
   id            String  @id @default(cuid())
   bounding      Boolean @default(false)
-  colorMode     String  @unique @default("BLACK_WHITE_LASER")
+  colorMode     String  @default("BLACK_WHITE_LASER")
   data_filesize Int?
   data_filename String?
+  dataAsBase64  String  @default("")
   description   String  @default("")
   double        Boolean @default(false)
   name          String  @default("")
   pageCount     Int?
-  pageSize      Int?
+  pageSize      String  @default("A4")
   series        Int?
   size          Int?
   type          String  @default("")
   Order         Order?  @relation("File_Order", fields: [OrderId], references: [id])
   OrderId       String? @map("Order")
 
+  @@index([colorMode])
+  @@index([pageSize])
   @@index([OrderId])
 }
 

@@ -13,6 +13,7 @@ import { lists } from './schema';
 // authentication is configured separately here too, but you might move this elsewhere
 // when you write your list-level access control functions, as they typically rely on session data
 import { withAuth, session } from './auth';
+import express from 'express';
 
 export default withAuth(
   config({
@@ -27,6 +28,11 @@ export default withAuth(
     session,
     server: {
       port: 8080,
+      extendExpressApp: (app) => {
+        app.use(express.json({ limit: '1gb' }));
+        app.use(express.urlencoded({ limit: '1gb' }));
+      },
+      // maxFileSize: 25_000_000,
     },
     graphql: {
       playground: true,
@@ -35,7 +41,7 @@ export default withAuth(
       fileStorage: {
         kind: 'local',
         type: 'file',
-        generateUrl: path => `https://chaapkhouneh.ir:8080/files${path}`,
+        generateUrl: path => `https://chaapkhouneh.ir/files${path}`,
         serverRoute: {
           path: '/files',
         },

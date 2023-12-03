@@ -1,7 +1,9 @@
 "use strict";
+var __create = Object.create;
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __export = (target, all) => {
   for (var name in all)
@@ -15,6 +17,14 @@ var __copyProps = (to, from, except, desc) => {
   }
   return to;
 };
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
 // keystone.ts
@@ -28,6 +38,23 @@ var import_core2 = require("@keystone-6/core");
 // schema.ts
 var import_core = require("@keystone-6/core");
 var import_access = require("@keystone-6/core/access");
+var import_path = __toESM(require("path"));
+var import_fs2 = __toESM(require("fs"));
+
+// assets/js/random.ts
+function createRandomString(length) {
+  let result = "";
+  const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  const charactersLength = characters.length;
+  let counter = 0;
+  while (counter < length) {
+    result += characters.charAt(Math.floor(Math.random() * charactersLength));
+    counter += 1;
+  }
+  return result;
+}
+
+// schema.ts
 var import_fields = require("@keystone-6/core/fields");
 var import_fields_document = require("@keystone-6/fields-document");
 
@@ -41,6 +68,12 @@ var ORDER_STATE = /* @__PURE__ */ ((ORDER_STATE2) => {
   ORDER_STATE2[ORDER_STATE2["RECEIVED"] = 5] = "RECEIVED";
   return ORDER_STATE2;
 })(ORDER_STATE || {});
+var PAGE_SIZE = /* @__PURE__ */ ((PAGE_SIZE2) => {
+  PAGE_SIZE2[PAGE_SIZE2["A5"] = 0] = "A5";
+  PAGE_SIZE2[PAGE_SIZE2["A4"] = 1] = "A4";
+  PAGE_SIZE2[PAGE_SIZE2["A3"] = 2] = "A3";
+  return PAGE_SIZE2;
+})(PAGE_SIZE || {});
 var COLOR_MODE = /* @__PURE__ */ ((COLOR_MODE2) => {
   COLOR_MODE2[COLOR_MODE2["BLACK_WHITE_LASER"] = 0] = "BLACK_WHITE_LASER";
   COLOR_MODE2[COLOR_MODE2["COLOR_LASER"] = 1] = "COLOR_LASER";
@@ -48,6 +81,14 @@ var COLOR_MODE = /* @__PURE__ */ ((COLOR_MODE2) => {
   COLOR_MODE2[COLOR_MODE2["COLOR_DIGITAL"] = 3] = "COLOR_DIGITAL";
   return COLOR_MODE2;
 })(COLOR_MODE || {});
+
+// assets/js/file.ts
+var import_fs = __toESM(require("fs"));
+function getFilesizeInBytes(filename) {
+  var stats = import_fs.default.statSync(filename);
+  var fileSizeInBytes = stats.size;
+  return fileSizeInBytes;
+}
 
 // schema.ts
 var lists = {
@@ -173,13 +214,20 @@ var lists = {
         defaultValue: ORDER_STATE[0 /* WAITING_FOR_PAYMENT */],
         // db: { map: 'my_select' },
         validation: { isRequired: true },
-        isIndexed: "unique",
+        isIndexed: true,
         ui: { displayMode: "select" }
       }),
       paymentAuthority: (0, import_fields.text)(),
+      totalPrice: (0, import_fields.integer)(),
       // this can be helpful to find out all the Posts associated with a Tag
       AddressInfo: (0, import_fields.relationship)({ ref: "AddressInfo.Order", many: false }),
       Files: (0, import_fields.relationship)({ ref: "File.Order", many: true })
+    },
+    hooks: {
+      resolveInput: ({ resolvedData }) => {
+        resolvedData.paymentAuthority = createRandomString(5);
+        return resolvedData;
+      }
     }
   }),
   File: (0, import_core.list)({
@@ -197,19 +245,47 @@ var lists = {
         defaultValue: COLOR_MODE[0 /* BLACK_WHITE_LASER */],
         // db: { map: 'my_select' },
         validation: { isRequired: true },
-        isIndexed: "unique",
+        isIndexed: true,
         ui: { displayMode: "select" }
       }),
       data: (0, import_fields.file)({ storage: "fileStorage" }),
+      dataAsBase64: (0, import_fields.text)(),
       description: (0, import_fields.text)(),
       double: (0, import_fields.checkbox)(),
       name: (0, import_fields.text)(),
       pageCount: (0, import_fields.integer)(),
-      pageSize: (0, import_fields.integer)(),
+      pageSize: (0, import_fields.select)({
+        type: "enum",
+        options: [
+          { label: "A5", value: PAGE_SIZE[0 /* A5 */] },
+          { label: "A4", value: PAGE_SIZE[1 /* A4 */] },
+          { label: "A3", value: PAGE_SIZE[2 /* A3 */] }
+        ],
+        defaultValue: PAGE_SIZE[1 /* A4 */],
+        // db: { map: 'my_select' },
+        validation: { isRequired: true },
+        isIndexed: true,
+        ui: { displayMode: "select" }
+      }),
       series: (0, import_fields.integer)(),
       size: (0, import_fields.integer)(),
       type: (0, import_fields.text)(),
       Order: (0, import_fields.relationship)({ ref: "Order.Files", many: false })
+    },
+    hooks: {
+      resolveInput: ({ resolvedData }) => {
+        const { name, dataAsBase64, data } = resolvedData;
+        if (dataAsBase64) {
+          const validBase64 = dataAsBase64.split(",")[1];
+          const uniqueName = name.replace(/(\.[\w\d_-]+)$/i, `_${createRandomString(7)}$1`);
+          const address = import_path.default.join(process.cwd(), "public/files", uniqueName);
+          import_fs2.default.writeFileSync(address, validBase64, "base64");
+          data.filename = uniqueName;
+          data.filesize = getFilesizeInBytes(address);
+          resolvedData.dataAsBase64 = "";
+        }
+        return resolvedData;
+      }
     }
   }),
   AddressInfo: (0, import_core.list)({
@@ -259,6 +335,7 @@ var session = (0, import_session.statelessSessions)({
 });
 
 // keystone.ts
+var import_express = __toESM(require("express"));
 var keystone_default = withAuth(
   (0, import_core2.config)({
     db: {
@@ -271,7 +348,12 @@ var keystone_default = withAuth(
     lists,
     session,
     server: {
-      port: 8080
+      port: 8080,
+      extendExpressApp: (app) => {
+        app.use(import_express.default.json({ limit: "1gb" }));
+        app.use(import_express.default.urlencoded({ limit: "1gb" }));
+      }
+      // maxFileSize: 25_000_000,
     },
     graphql: {
       playground: true
@@ -280,7 +362,7 @@ var keystone_default = withAuth(
       fileStorage: {
         kind: "local",
         type: "file",
-        generateUrl: (path) => `https://chaapkhouneh.ir:8080/files${path}`,
+        generateUrl: (path2) => `https://chaapkhouneh.ir/files${path2}`,
         serverRoute: {
           path: "/files"
         },
