@@ -256,6 +256,7 @@ export const lists: Lists = {
   AddressInfo: list({
     access: allowAll,
     fields: {
+      fullName: text(),
       city: text(),
       mobileNumber: text(),
       postalAddress: text(),
