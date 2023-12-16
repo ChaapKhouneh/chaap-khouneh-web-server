@@ -91,6 +91,7 @@ function getFilesizeInBytes(filename) {
 }
 
 // schema.ts
+var soap = __toESM(require("soap"));
 var lists = {
   User: (0, import_core.list)({
     // WARNING
@@ -217,15 +218,42 @@ var lists = {
         isIndexed: true,
         ui: { displayMode: "select" }
       }),
-      paymentAuthority: (0, import_fields.text)(),
+      paymentAuthority: (0, import_fields.bigInt)(),
       totalPrice: (0, import_fields.integer)(),
-      // this can be helpful to find out all the Posts associated with a Tag
       AddressInfo: (0, import_fields.relationship)({ ref: "AddressInfo.Order", many: false }),
-      Files: (0, import_fields.relationship)({ ref: "File.Order", many: true })
+      Files: (0, import_fields.relationship)({ ref: "File.Order", many: true }),
+      ParsianPaymentInfo: (0, import_fields.relationship)({ ref: "ParsianPaymentInfo.Order", many: false })
     },
     hooks: {
-      resolveInput: ({ resolvedData }) => {
-        resolvedData.paymentAuthority = createRandomString(5);
+      resolveInput: async ({ resolvedData, context }) => {
+        resolvedData.paymentAuthority = `${Date.now()}`;
+        const parsianURL = "https://pec.shaparak.ir/NewIPGServices/Sale/SaleService.asmx?wsdl";
+        const soapClient = await soap.createClientAsync(parsianURL);
+        const soapResponse = await soapClient.SalePaymentRequestAsync({
+          requestData: {
+            LoginAccount: "1cVFr74Se4m8yHO0fAjW",
+            OrderId: resolvedData.paymentAuthority,
+            // paymentAuthority
+            Amount: 1e3,
+            CallBackUrl: "https://chaapkhouneh.ir/api/payment-callback",
+            AdditionalData: "",
+            Originator: "\u0645\u0647\u062F\u06CC \u0647\u0648\u0634\u0645\u0646\u062F"
+          }
+        });
+        const createResponse = soapResponse[0].SalePaymentRequestResult;
+        console.log({
+          createResponse
+        });
+        if (createResponse.Status != 0) {
+          throw new Error(createResponse.Message);
+        }
+        resolvedData.ParsianPaymentInfo = {
+          create: {
+            createResponseMessage: createResponse.Message,
+            createResponseStatus: createResponse.Status,
+            createResponseToken: createResponse.Token
+          }
+        };
         return resolvedData;
       }
     }
@@ -291,12 +319,47 @@ var lists = {
   AddressInfo: (0, import_core.list)({
     access: import_access.allowAll,
     fields: {
+      fullName: (0, import_fields.text)(),
       city: (0, import_fields.text)(),
       mobileNumber: (0, import_fields.text)(),
       postalAddress: (0, import_fields.text)(),
       postalCode: (0, import_fields.text)(),
       province: (0, import_fields.text)(),
       Order: (0, import_fields.relationship)({ ref: "Order.AddressInfo", many: false })
+    }
+  }),
+  ParsianPaymentInfo: (0, import_core.list)({
+    access: import_access.allowAll,
+    fields: {
+      //#region create
+      createResponseStatus: (0, import_fields.integer)(),
+      createResponseMessage: (0, import_fields.text)(),
+      createResponseToken: (0, import_fields.bigInt)(),
+      // this is long number but mentioned as text
+      //#endregion
+      //#region callback
+      callbackToken: (0, import_fields.bigInt)(),
+      callbackOrderId: (0, import_fields.text)(),
+      callbackTerminalNumber: (0, import_fields.bigInt)(),
+      // status = 0 and RRN > 0 || status = -138
+      callbackRRN: (0, import_fields.bigInt)(),
+      callbackStatus: (0, import_fields.integer)(),
+      callbackAmountAsString: (0, import_fields.text)(),
+      callbackCardNumberHashed: (0, import_fields.text)(),
+      callbackAmount: (0, import_fields.bigInt)(),
+      //#endregion
+      //#region confirm
+      confirmResponseStatus: (0, import_fields.integer)(),
+      confirmResponseCardNumberMasked: (0, import_fields.text)(),
+      confirmResponseToken: (0, import_fields.bigInt)(),
+      confirmResponseRRN: (0, import_fields.bigInt)(),
+      //#endregion
+      //#region reversal
+      reversalResponseStatus: (0, import_fields.integer)(),
+      reversalResponseMessage: (0, import_fields.text)(),
+      reversalResponseToken: (0, import_fields.bigInt)(),
+      //#endregion
+      Order: (0, import_fields.relationship)({ ref: "Order.ParsianPaymentInfo", many: false })
     }
   })
 };
@@ -343,7 +406,7 @@ var keystone_default = withAuth(
       //   for more information on what database might be appropriate for you
       //   see https://keystonejs.com/docs/guides/choosing-a-database#title
       provider: "sqlite",
-      url: "file:./keystone.db"
+      url: "file:./data/app.db"
     },
     lists,
     session,

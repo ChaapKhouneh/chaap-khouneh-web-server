@@ -258,11 +258,12 @@ type Order {
   id: ID!
   createdAt: DateTime
   status: OrderStatusType
-  paymentAuthority: String
+  paymentAuthority: BigInt
   totalPrice: Int
   AddressInfo: AddressInfo
   Files(where: FileWhereInput! = {}, orderBy: [FileOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: FileWhereUniqueInput): [File!]
   FilesCount(where: FileWhereInput! = {}): Int
+  ParsianPaymentInfo: ParsianPaymentInfo
 }
 
 enum OrderStatusType {
@@ -273,6 +274,8 @@ enum OrderStatusType {
   SENT
   RECEIVED
 }
+
+scalar BigInt
 
 input OrderWhereUniqueInput {
   id: ID
@@ -285,10 +288,11 @@ input OrderWhereInput {
   id: IDFilter
   createdAt: DateTimeNullableFilter
   status: OrderStatusTypeNullableFilter
-  paymentAuthority: StringFilter
+  paymentAuthority: BigIntNullableFilter
   totalPrice: IntNullableFilter
   AddressInfo: AddressInfoWhereInput
   Files: FileManyRelationFilter
+  ParsianPaymentInfo: ParsianPaymentInfoWhereInput
 }
 
 input OrderStatusTypeNullableFilter {
@@ -296,6 +300,17 @@ input OrderStatusTypeNullableFilter {
   in: [OrderStatusType!]
   notIn: [OrderStatusType!]
   not: OrderStatusTypeNullableFilter
+}
+
+input BigIntNullableFilter {
+  equals: BigInt
+  in: [BigInt!]
+  notIn: [BigInt!]
+  lt: BigInt
+  lte: BigInt
+  gt: BigInt
+  gte: BigInt
+  not: BigIntNullableFilter
 }
 
 input IntNullableFilter {
@@ -326,10 +341,11 @@ input OrderOrderByInput {
 input OrderUpdateInput {
   createdAt: DateTime
   status: OrderStatusType
-  paymentAuthority: String
+  paymentAuthority: BigInt
   totalPrice: Int
   AddressInfo: AddressInfoRelateToOneForUpdateInput
   Files: FileRelateToManyForUpdateInput
+  ParsianPaymentInfo: ParsianPaymentInfoRelateToOneForUpdateInput
 }
 
 input AddressInfoRelateToOneForUpdateInput {
@@ -345,6 +361,12 @@ input FileRelateToManyForUpdateInput {
   connect: [FileWhereUniqueInput!]
 }
 
+input ParsianPaymentInfoRelateToOneForUpdateInput {
+  create: ParsianPaymentInfoCreateInput
+  connect: ParsianPaymentInfoWhereUniqueInput
+  disconnect: Boolean
+}
+
 input OrderUpdateArgs {
   where: OrderWhereUniqueInput!
   data: OrderUpdateInput!
@@ -353,10 +375,11 @@ input OrderUpdateArgs {
 input OrderCreateInput {
   createdAt: DateTime
   status: OrderStatusType
-  paymentAuthority: String
+  paymentAuthority: BigInt
   totalPrice: Int
   AddressInfo: AddressInfoRelateToOneForCreateInput
   Files: FileRelateToManyForCreateInput
+  ParsianPaymentInfo: ParsianPaymentInfoRelateToOneForCreateInput
 }
 
 input AddressInfoRelateToOneForCreateInput {
@@ -367,6 +390,11 @@ input AddressInfoRelateToOneForCreateInput {
 input FileRelateToManyForCreateInput {
   create: [FileCreateInput!]
   connect: [FileWhereUniqueInput!]
+}
+
+input ParsianPaymentInfoRelateToOneForCreateInput {
+  create: ParsianPaymentInfoCreateInput
+  connect: ParsianPaymentInfoWhereUniqueInput
 }
 
 type File {
@@ -519,6 +547,7 @@ input OrderRelateToOneForCreateInput {
 
 type AddressInfo {
   id: ID!
+  fullName: String
   city: String
   mobileNumber: String
   postalAddress: String
@@ -536,6 +565,7 @@ input AddressInfoWhereInput {
   OR: [AddressInfoWhereInput!]
   NOT: [AddressInfoWhereInput!]
   id: IDFilter
+  fullName: StringFilter
   city: StringFilter
   mobileNumber: StringFilter
   postalAddress: StringFilter
@@ -546,6 +576,7 @@ input AddressInfoWhereInput {
 
 input AddressInfoOrderByInput {
   id: OrderDirection
+  fullName: OrderDirection
   city: OrderDirection
   mobileNumber: OrderDirection
   postalAddress: OrderDirection
@@ -554,6 +585,7 @@ input AddressInfoOrderByInput {
 }
 
 input AddressInfoUpdateInput {
+  fullName: String
   city: String
   mobileNumber: String
   postalAddress: String
@@ -568,11 +600,136 @@ input AddressInfoUpdateArgs {
 }
 
 input AddressInfoCreateInput {
+  fullName: String
   city: String
   mobileNumber: String
   postalAddress: String
   postalCode: String
   province: String
+  Order: OrderRelateToOneForCreateInput
+}
+
+type ParsianPaymentInfo {
+  id: ID!
+  createResponseStatus: Int
+  createResponseMessage: String
+  createResponseToken: BigInt
+  callbackToken: BigInt
+  callbackOrderId: String
+  callbackTerminalNumber: BigInt
+  callbackRRN: BigInt
+  callbackStatus: Int
+  callbackAmountAsString: String
+  callbackCardNumberHashed: String
+  callbackAmount: BigInt
+  confirmResponseStatus: Int
+  confirmResponseCardNumberMasked: String
+  confirmResponseToken: BigInt
+  confirmResponseRRN: BigInt
+  reversalResponseStatus: Int
+  reversalResponseMessage: String
+  reversalResponseToken: BigInt
+  Order: Order
+}
+
+input ParsianPaymentInfoWhereUniqueInput {
+  id: ID
+}
+
+input ParsianPaymentInfoWhereInput {
+  AND: [ParsianPaymentInfoWhereInput!]
+  OR: [ParsianPaymentInfoWhereInput!]
+  NOT: [ParsianPaymentInfoWhereInput!]
+  id: IDFilter
+  createResponseStatus: IntNullableFilter
+  createResponseMessage: StringFilter
+  createResponseToken: BigIntNullableFilter
+  callbackToken: BigIntNullableFilter
+  callbackOrderId: StringFilter
+  callbackTerminalNumber: BigIntNullableFilter
+  callbackRRN: BigIntNullableFilter
+  callbackStatus: IntNullableFilter
+  callbackAmountAsString: StringFilter
+  callbackCardNumberHashed: StringFilter
+  callbackAmount: BigIntNullableFilter
+  confirmResponseStatus: IntNullableFilter
+  confirmResponseCardNumberMasked: StringFilter
+  confirmResponseToken: BigIntNullableFilter
+  confirmResponseRRN: BigIntNullableFilter
+  reversalResponseStatus: IntNullableFilter
+  reversalResponseMessage: StringFilter
+  reversalResponseToken: BigIntNullableFilter
+  Order: OrderWhereInput
+}
+
+input ParsianPaymentInfoOrderByInput {
+  id: OrderDirection
+  createResponseStatus: OrderDirection
+  createResponseMessage: OrderDirection
+  createResponseToken: OrderDirection
+  callbackToken: OrderDirection
+  callbackOrderId: OrderDirection
+  callbackTerminalNumber: OrderDirection
+  callbackRRN: OrderDirection
+  callbackStatus: OrderDirection
+  callbackAmountAsString: OrderDirection
+  callbackCardNumberHashed: OrderDirection
+  callbackAmount: OrderDirection
+  confirmResponseStatus: OrderDirection
+  confirmResponseCardNumberMasked: OrderDirection
+  confirmResponseToken: OrderDirection
+  confirmResponseRRN: OrderDirection
+  reversalResponseStatus: OrderDirection
+  reversalResponseMessage: OrderDirection
+  reversalResponseToken: OrderDirection
+}
+
+input ParsianPaymentInfoUpdateInput {
+  createResponseStatus: Int
+  createResponseMessage: String
+  createResponseToken: BigInt
+  callbackToken: BigInt
+  callbackOrderId: String
+  callbackTerminalNumber: BigInt
+  callbackRRN: BigInt
+  callbackStatus: Int
+  callbackAmountAsString: String
+  callbackCardNumberHashed: String
+  callbackAmount: BigInt
+  confirmResponseStatus: Int
+  confirmResponseCardNumberMasked: String
+  confirmResponseToken: BigInt
+  confirmResponseRRN: BigInt
+  reversalResponseStatus: Int
+  reversalResponseMessage: String
+  reversalResponseToken: BigInt
+  Order: OrderRelateToOneForUpdateInput
+}
+
+input ParsianPaymentInfoUpdateArgs {
+  where: ParsianPaymentInfoWhereUniqueInput!
+  data: ParsianPaymentInfoUpdateInput!
+}
+
+input ParsianPaymentInfoCreateInput {
+  createResponseStatus: Int
+  createResponseMessage: String
+  createResponseToken: BigInt
+  callbackToken: BigInt
+  callbackOrderId: String
+  callbackTerminalNumber: BigInt
+  callbackRRN: BigInt
+  callbackStatus: Int
+  callbackAmountAsString: String
+  callbackCardNumberHashed: String
+  callbackAmount: BigInt
+  confirmResponseStatus: Int
+  confirmResponseCardNumberMasked: String
+  confirmResponseToken: BigInt
+  confirmResponseRRN: BigInt
+  reversalResponseStatus: Int
+  reversalResponseMessage: String
+  reversalResponseToken: BigInt
   Order: OrderRelateToOneForCreateInput
 }
 
@@ -618,6 +775,12 @@ type Mutation {
   updateAddressInfos(data: [AddressInfoUpdateArgs!]!): [AddressInfo]
   deleteAddressInfo(where: AddressInfoWhereUniqueInput!): AddressInfo
   deleteAddressInfos(where: [AddressInfoWhereUniqueInput!]!): [AddressInfo]
+  createParsianPaymentInfo(data: ParsianPaymentInfoCreateInput!): ParsianPaymentInfo
+  createParsianPaymentInfos(data: [ParsianPaymentInfoCreateInput!]!): [ParsianPaymentInfo]
+  updateParsianPaymentInfo(where: ParsianPaymentInfoWhereUniqueInput!, data: ParsianPaymentInfoUpdateInput!): ParsianPaymentInfo
+  updateParsianPaymentInfos(data: [ParsianPaymentInfoUpdateArgs!]!): [ParsianPaymentInfo]
+  deleteParsianPaymentInfo(where: ParsianPaymentInfoWhereUniqueInput!): ParsianPaymentInfo
+  deleteParsianPaymentInfos(where: [ParsianPaymentInfoWhereUniqueInput!]!): [ParsianPaymentInfo]
   endSession: Boolean!
   authenticateUserWithPassword(email: String!, password: String!): UserAuthenticationWithPasswordResult
   createInitialUser(data: CreateInitialUserInput!): UserAuthenticationWithPasswordSuccess!
@@ -659,6 +822,9 @@ type Query {
   addressInfos(where: AddressInfoWhereInput! = {}, orderBy: [AddressInfoOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: AddressInfoWhereUniqueInput): [AddressInfo!]
   addressInfo(where: AddressInfoWhereUniqueInput!): AddressInfo
   addressInfosCount(where: AddressInfoWhereInput! = {}): Int
+  parsianPaymentInfos(where: ParsianPaymentInfoWhereInput! = {}, orderBy: [ParsianPaymentInfoOrderByInput!]! = [], take: Int, skip: Int! = 0, cursor: ParsianPaymentInfoWhereUniqueInput): [ParsianPaymentInfo!]
+  parsianPaymentInfo(where: ParsianPaymentInfoWhereUniqueInput!): ParsianPaymentInfo
+  parsianPaymentInfosCount(where: ParsianPaymentInfoWhereInput! = {}): Int
   keystone: KeystoneMeta!
   authenticatedItem: AuthenticatedItem
 }

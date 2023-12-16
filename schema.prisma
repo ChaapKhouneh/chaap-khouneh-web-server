@@ -38,13 +38,15 @@ model Tag {
 }
 
 model Order {
-  id               String       @id @default(cuid())
-  createdAt        DateTime?    @default(now())
-  status           String       @default("WAITING_FOR_PAYMENT")
-  paymentAuthority String       @default("")
-  totalPrice       Int?
-  AddressInfo      AddressInfo? @relation("AddressInfo_Order")
-  Files            File[]       @relation("File_Order")
+  id                   String              @id @default(cuid())
+  createdAt            DateTime?           @default(now())
+  status               String              @default("WAITING_FOR_PAYMENT")
+  paymentAuthority     BigInt?
+  totalPrice           Int?
+  AddressInfo          AddressInfo?        @relation("AddressInfo_Order")
+  Files                File[]              @relation("File_Order")
+  ParsianPaymentInfo   ParsianPaymentInfo? @relation("Order_ParsianPaymentInfo", fields: [ParsianPaymentInfoId], references: [id])
+  ParsianPaymentInfoId String?             @unique @map("ParsianPaymentInfo")
 
   @@index([status])
 }
@@ -74,6 +76,7 @@ model File {
 
 model AddressInfo {
   id            String  @id @default(cuid())
+  fullName      String  @default("")
   city          String  @default("")
   mobileNumber  String  @default("")
   postalAddress String  @default("")
@@ -81,4 +84,27 @@ model AddressInfo {
   province      String  @default("")
   Order         Order?  @relation("AddressInfo_Order", fields: [OrderId], references: [id])
   OrderId       String? @unique @map("Order")
+}
+
+model ParsianPaymentInfo {
+  id                              String  @id @default(cuid())
+  createResponseStatus            Int?
+  createResponseMessage           String  @default("")
+  createResponseToken             BigInt?
+  callbackToken                   BigInt?
+  callbackOrderId                 String  @default("")
+  callbackTerminalNumber          BigInt?
+  callbackRRN                     BigInt?
+  callbackStatus                  Int?
+  callbackAmountAsString          String  @default("")
+  callbackCardNumberHashed        String  @default("")
+  callbackAmount                  BigInt?
+  confirmResponseStatus           Int?
+  confirmResponseCardNumberMasked String  @default("")
+  confirmResponseToken            BigInt?
+  confirmResponseRRN              BigInt?
+  reversalResponseStatus          Int?
+  reversalResponseMessage         String  @default("")
+  reversalResponseToken           BigInt?
+  Order                           Order?  @relation("Order_ParsianPaymentInfo")
 }

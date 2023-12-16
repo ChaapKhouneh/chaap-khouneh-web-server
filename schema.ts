@@ -22,6 +22,7 @@ import {
   checkbox,
   file,
   integer,
+  bigInt,
 } from '@keystone-6/core/fields';
 
 // the document field is a more complicated field, so it has it's own package
@@ -33,6 +34,7 @@ import { document } from '@keystone-6/fields-document';
 import type { Lists } from '.keystone/types';
 import { COLOR_MODE, ORDER_STATE, PAGE_SIZE } from './assets/js/enums';
 import { getFilesizeInBytes } from './assets/js/file';
+import * as soap from 'soap';
 
 export const lists: Lists = {
   User: list({
@@ -178,15 +180,55 @@ export const lists: Lists = {
         isIndexed: true,
         ui: { displayMode: 'select' },
       }),
-      paymentAuthority: text(),
+      paymentAuthority: bigInt(),
       totalPrice: integer(),
-      // this can be helpful to find out all the Posts associated with a Tag
       AddressInfo: relationship({ ref: 'AddressInfo.Order', many: false }),
       Files: relationship({ ref: 'File.Order', many: true }),
+      ParsianPaymentInfo: relationship({ ref: 'ParsianPaymentInfo.Order', many: false }),
     },
     hooks: {
-      resolveInput: ({ resolvedData }) => {
-        resolvedData.paymentAuthority = createRandomString(5);
+      resolveInput: async ({ resolvedData, context }) => {
+        // const sudoContext = context.sudo();
+        // const lastPaymentAuthority = (await sudoContext.db.Order.findMany({
+        //   orderBy: {
+        //     paymentAuthority: 'desc',
+        //   },
+        //   take: 1,
+        // }))[0]?.paymentAuthority;
+        // resolvedData.paymentAuthority = lastPaymentAuthority ? lastPaymentAuthority + 1 : '1';
+        // resolvedData.paymentAuthority = createRandomString(5);
+        resolvedData.paymentAuthority = `${Date.now()}`;
+
+        // create order in parsian
+        const parsianURL = 'https://pec.shaparak.ir/NewIPGServices/Sale/SaleService.asmx?wsdl';
+        const soapClient = await soap.createClientAsync(parsianURL);
+        const soapResponse = await soapClient.SalePaymentRequestAsync({
+          requestData: {
+            LoginAccount: '1cVFr74Se4m8yHO0fAjW',
+            OrderId: resolvedData.paymentAuthority, // paymentAuthority
+            Amount: 1_000,
+            CallBackUrl: 'https://chaapkhouneh.ir/api/payment-callback',
+            AdditionalData: '',
+            Originator: 'مهدی هوشمند',
+          }
+        });
+
+        const createResponse = soapResponse[0].SalePaymentRequestResult;
+
+        console.log({
+          createResponse,
+        });
+
+        if (createResponse.Status != 0) {
+          throw new Error(createResponse.Message);
+        }
+        resolvedData.ParsianPaymentInfo = {
+          create: {
+            createResponseMessage: createResponse.Message,
+            createResponseStatus: createResponse.Status,
+            createResponseToken: createResponse.Token,
+          }
+        };
 
         return resolvedData;
       }
@@ -265,4 +307,38 @@ export const lists: Lists = {
       Order: relationship({ ref: 'Order.AddressInfo', many: false }),
     }
   }),
+  ParsianPaymentInfo: list({
+    access: allowAll,
+    fields: {
+      //#region create
+      createResponseStatus: integer(),
+      createResponseMessage: text(),
+      createResponseToken: bigInt(), // this is long number but mentioned as text
+      //#endregion
+      //#region callback
+      callbackToken: bigInt(),
+      callbackOrderId: text(),
+      callbackTerminalNumber: bigInt(),
+      // status = 0 and RRN > 0 || status = -138
+      callbackRRN: bigInt(),
+      callbackStatus: integer(),
+      callbackAmountAsString: text(),
+      callbackCardNumberHashed: text(),
+      callbackAmount: bigInt(),
+      //#endregion
+      //#region confirm
+      confirmResponseStatus: integer(),
+      confirmResponseCardNumberMasked: text(),
+      confirmResponseToken: bigInt(),
+      confirmResponseRRN: bigInt(),
+      //#endregion
+      //#region reversal
+      reversalResponseStatus: integer(),
+      reversalResponseMessage: text(),
+      reversalResponseToken: bigInt(),
+      //#endregion
+
+      Order: relationship({ ref: 'Order.ParsianPaymentInfo', many: false }),
+    }
+  })
 };
