@@ -226,7 +226,7 @@ var lists = {
     },
     hooks: {
       resolveInput: async ({ resolvedData, context }) => {
-        resolvedData.paymentAuthority = `${Date.now()}`;
+        resolvedData.paymentAuthority = BigInt(Date.now());
         const parsianURL = "https://pec.shaparak.ir/NewIPGServices/Sale/SaleService.asmx?wsdl";
         const soapClient = await soap.createClientAsync(parsianURL);
         const soapResponse = await soapClient.SalePaymentRequestAsync({
@@ -234,10 +234,10 @@ var lists = {
             LoginAccount: "1cVFr74Se4m8yHO0fAjW",
             OrderId: resolvedData.paymentAuthority,
             // paymentAuthority
-            Amount: 1e3,
+            Amount: resolvedData.totalPrice ?? 0 * 10,
             CallBackUrl: "https://chaapkhouneh.ir/api/payment-callback",
             AdditionalData: "",
-            Originator: "\u0645\u0647\u062F\u06CC \u0647\u0648\u0634\u0645\u0646\u062F"
+            Originator: resolvedData.AddressInfo?.create?.fullName
           }
         });
         const createResponse = soapResponse[0].SalePaymentRequestResult;

@@ -197,7 +197,8 @@ export const lists: Lists = {
         // }))[0]?.paymentAuthority;
         // resolvedData.paymentAuthority = lastPaymentAuthority ? lastPaymentAuthority + 1 : '1';
         // resolvedData.paymentAuthority = createRandomString(5);
-        resolvedData.paymentAuthority = `${Date.now()}`;
+        // FIXME: Date.now() is not safe
+        resolvedData.paymentAuthority = <any> BigInt(Date.now());
 
         // create order in parsian
         const parsianURL = 'https://pec.shaparak.ir/NewIPGServices/Sale/SaleService.asmx?wsdl';
@@ -206,14 +207,15 @@ export const lists: Lists = {
           requestData: {
             LoginAccount: '1cVFr74Se4m8yHO0fAjW',
             OrderId: resolvedData.paymentAuthority, // paymentAuthority
-            Amount: 1_000,
+            Amount: resolvedData.totalPrice ?? 0 * 10,
             CallBackUrl: 'https://chaapkhouneh.ir/api/payment-callback',
             AdditionalData: '',
-            Originator: 'مهدی هوشمند',
+            Originator: resolvedData.AddressInfo?.create?.fullName,
           }
         });
 
         const createResponse = soapResponse[0].SalePaymentRequestResult;
+        // const createResponse = { Token: 261577301770039, Message: 'عملیات موفق', Status: 0 };
 
         console.log({
           createResponse,
