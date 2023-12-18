@@ -227,20 +227,26 @@ var lists = {
     hooks: {
       resolveInput: async ({ resolvedData, context }) => {
         resolvedData.paymentAuthority = BigInt(Date.now());
-        const parsianURL = "https://pec.shaparak.ir/NewIPGServices/Sale/SaleService.asmx?wsdl";
-        const soapClient = await soap.createClientAsync(parsianURL);
-        const soapResponse = await soapClient.SalePaymentRequestAsync({
-          requestData: {
-            LoginAccount: "1cVFr74Se4m8yHO0fAjW",
-            OrderId: resolvedData.paymentAuthority,
-            // paymentAuthority
-            Amount: resolvedData.totalPrice ?? 0 * 10,
-            CallBackUrl: "https://chaapkhouneh.ir/api/payment-callback",
-            AdditionalData: "",
-            Originator: resolvedData.AddressInfo?.create?.fullName
-          }
-        });
-        const createResponse = soapResponse[0].SalePaymentRequestResult;
+        console.log(process.env.NODE_ENV);
+        let createResponse;
+        if (process.env.NODE_ENV === "production") {
+          const parsianURL = "https://pec.shaparak.ir/NewIPGServices/Sale/SaleService.asmx?wsdl";
+          const soapClient = await soap.createClientAsync(parsianURL);
+          const soapResponse = await soapClient.SalePaymentRequestAsync({
+            requestData: {
+              LoginAccount: "1cVFr74Se4m8yHO0fAjW",
+              OrderId: resolvedData.paymentAuthority,
+              // paymentAuthority
+              Amount: resolvedData.totalPrice ?? 0 * 10,
+              CallBackUrl: "https://chaapkhouneh.ir/api/payment-callback",
+              AdditionalData: "",
+              Originator: resolvedData.AddressInfo?.create?.fullName
+            }
+          });
+          createResponse = soapResponse[0].SalePaymentRequestResult;
+        } else {
+          createResponse = { Token: 261577301770039, Message: "\u0639\u0645\u0644\u06CC\u0627\u062A \u0645\u0648\u0641\u0642", Status: 0 };
+        }
         console.log({
           createResponse
         });
