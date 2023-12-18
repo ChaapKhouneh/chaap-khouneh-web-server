@@ -237,7 +237,7 @@ var lists = {
               LoginAccount: "1cVFr74Se4m8yHO0fAjW",
               OrderId: resolvedData.paymentAuthority,
               // paymentAuthority
-              Amount: resolvedData.totalPrice ?? 0 * 10,
+              Amount: (resolvedData.totalPrice ?? 0) * 10,
               CallBackUrl: "https://chaapkhouneh.ir/api/payment-callback",
               AdditionalData: "",
               Originator: resolvedData.AddressInfo?.create?.fullName
@@ -405,6 +405,7 @@ var session = (0, import_session.statelessSessions)({
 
 // keystone.ts
 var import_express = __toESM(require("express"));
+var soap2 = __toESM(require("soap"));
 var keystone_default = withAuth(
   (0, import_core2.config)({
     db: {
@@ -418,9 +419,89 @@ var keystone_default = withAuth(
     session,
     server: {
       port: 8080,
-      extendExpressApp: (app) => {
+      extendExpressApp: (app, context) => {
         app.use(import_express.default.json({ limit: "1gb" }));
         app.use(import_express.default.urlencoded({ limit: "1gb" }));
+        app.post("/api/payment-callback", async (req, res) => {
+          console.log(req.body);
+          const Token = BigInt(req.body.Token);
+          const OrderId = BigInt(req.body.OrderId);
+          const TerminalNo = req.body.TerminalNo;
+          const RRN = BigInt(req.body.RRN);
+          const status = Number(req.body.status);
+          const AmountAsString = req.body.Amount;
+          const Amount = BigInt(AmountAsString.slice(0, AmountAsString.length - 1));
+          const HashCardNumber = req.body.HashCardNumber;
+          if (status === 0 && RRN > 0) {
+            const sudoContext = context.sudo();
+            const relatedOrder = (await sudoContext.db.Order.findMany({
+              where: {
+                paymentAuthority: {
+                  equals: OrderId
+                }
+              },
+              take: 1
+            }))[0];
+            const relatedParsianPaymentInfo = (await sudoContext.db.ParsianPaymentInfo.findMany({
+              where: {
+                id: {
+                  equals: relatedOrder.ParsianPaymentInfoId
+                },
+                createResponseToken: {
+                  equals: Token
+                }
+              },
+              take: 1
+            }))[0];
+            console.log({ relatedOrder, info: relatedParsianPaymentInfo ? "info found" : "info not found" });
+            await context.db.ParsianPaymentInfo.updateOne({
+              where: { id: relatedParsianPaymentInfo.id },
+              data: {
+                callbackToken: Token,
+                callbackOrderId: OrderId,
+                callbackTerminalNumber: TerminalNo,
+                callbackRRN: RRN,
+                callbackStatus: status,
+                callbackAmountAsString: AmountAsString,
+                callbackCardNumberHashed: HashCardNumber,
+                callbackAmount: Amount
+              }
+            });
+            if (relatedOrder && relatedParsianPaymentInfo && relatedOrder.status === ORDER_STATE[0 /* WAITING_FOR_PAYMENT */] && relatedOrder.totalPrice == Amount) {
+              console.log("every thing ok");
+              const parsianURL = "https://pec.shaparak.ir/NewIPGServices/Sale/SaleService.asmx?wsdl";
+              const soapClient = await soap2.createClientAsync(parsianURL);
+              const soapResponse = await soapClient.SalePaymentRequestAsync({
+                requestData: {
+                  LoginAccount: "1cVFr74Se4m8yHO0fAjW",
+                  Token
+                }
+              });
+              const confirmResponse = soapResponse[0].SalePaymentRequestResult;
+              console.log({ confirmResponse });
+              await context.db.ParsianPaymentInfo.updateOne({
+                where: { id: relatedParsianPaymentInfo.id },
+                data: {
+                  confirmResponseStatus: confirmResponse.Status,
+                  confirmResponseCardNumberMasked: confirmResponse.CardNumberMasked,
+                  confirmResponseToken: confirmResponse.Token,
+                  confirmResponseRRN: confirmResponse.RRN
+                }
+              });
+              await context.db.Order.updateOne({
+                where: { id: relatedOrder.id },
+                data: {
+                  status: 1 /* PAYED */
+                }
+              });
+              res.redirect("https://chaapkhouneh.ir/pay");
+            } else {
+              res.redirect("https://chaapkhouneh.ir/pay");
+            }
+          } else {
+            res.redirect("https://chaapkhouneh.ir/pay");
+          }
+        });
       }
       // maxFileSize: 25_000_000,
     },

@@ -14,6 +14,8 @@ import { lists } from './schema';
 // when you write your list-level access control functions, as they typically rely on session data
 import { withAuth, session } from './auth';
 import express from 'express';
+import { ORDER_STATE } from './assets/js/enums';
+import * as soap from 'soap';
 
 export default withAuth(
   config({
@@ -28,9 +30,107 @@ export default withAuth(
     session,
     server: {
       port: 8080,
-      extendExpressApp: (app) => {
+      extendExpressApp: (app, context) => {
         app.use(express.json({ limit: '1gb' }));
         app.use(express.urlencoded({ limit: '1gb' }));
+        app.post('/api/payment-callback', async (req, res) => {
+          console.log(req.body);
+
+          const Token = BigInt(req.body.Token);
+          const OrderId = BigInt(req.body.OrderId);
+          const TerminalNo = req.body.TerminalNo;
+          const RRN = BigInt(req.body.RRN);
+          const status = Number(req.body.status);
+          const AmountAsString = req.body.Amount;
+          const Amount = BigInt(AmountAsString.slice(0, AmountAsString.length - 1));
+          // const SwAmount = BigInt(req.body.SwAmount);
+          const HashCardNumber = req.body.HashCardNumber;
+
+          if (status === 0 && RRN > 0) {
+            // check if order exists and is not previously paid and amount matches
+            const sudoContext = context.sudo();
+            const relatedOrder = (await sudoContext.db.Order.findMany({
+              where: {
+                paymentAuthority: {
+                  equals: OrderId,
+                }
+              },
+              take: 1,
+            }))[0];
+
+            const relatedParsianPaymentInfo = (await sudoContext.db.ParsianPaymentInfo.findMany({
+              where: {
+                id: {
+                  equals: relatedOrder.ParsianPaymentInfoId,
+                },
+                createResponseToken: {
+                  equals: Token,
+                }
+              },
+              take: 1,
+            }))[0];
+
+            console.log({ relatedOrder, info: relatedParsianPaymentInfo ? 'info found' : 'info not found' });
+            await context.db.ParsianPaymentInfo.updateOne({
+              where: { id: relatedParsianPaymentInfo.id },
+              data: {
+                callbackToken: Token,
+                callbackOrderId: OrderId,
+                callbackTerminalNumber: TerminalNo,
+                callbackRRN: RRN,
+                callbackStatus: status,
+                callbackAmountAsString: AmountAsString,
+                callbackCardNumberHashed: HashCardNumber,
+                callbackAmount: Amount,
+              },
+            });
+
+            if (
+              relatedOrder
+              && relatedParsianPaymentInfo
+              && relatedOrder.status === ORDER_STATE[ORDER_STATE.WAITING_FOR_PAYMENT]
+              && relatedOrder.totalPrice == Amount) {
+              console.log('every thing ok');
+              // confirm payment
+              const parsianURL = 'https://pec.shaparak.ir/NewIPGServices/Sale/SaleService.asmx?wsdl';
+              const soapClient = await soap.createClientAsync(parsianURL);
+              const soapResponse = await soapClient.SalePaymentRequestAsync({
+                requestData: {
+                  LoginAccount: '1cVFr74Se4m8yHO0fAjW',
+                  Token,
+                }
+              });
+              const confirmResponse = soapResponse[0].SalePaymentRequestResult;
+              console.log({ confirmResponse });
+
+              await context.db.ParsianPaymentInfo.updateOne({
+                where: { id: relatedParsianPaymentInfo.id },
+                data: {
+                  confirmResponseStatus: confirmResponse.Status,
+                  confirmResponseCardNumberMasked: confirmResponse.CardNumberMasked,
+                  confirmResponseToken: confirmResponse.Token,
+                  confirmResponseRRN: confirmResponse.RRN,
+                },
+              });
+
+              await context.db.Order.updateOne({
+                where: { id: relatedOrder.id },
+                data: {
+                  status: ORDER_STATE.PAYED,
+                },
+              });
+
+              res.redirect('https://chaapkhouneh.ir/pay');
+            }
+            else {
+              // reject payment
+              res.redirect('https://chaapkhouneh.ir/pay');
+            }
+          }
+          else {
+            res.redirect('https://chaapkhouneh.ir/pay');
+          }
+        });
       },
       // maxFileSize: 25_000_000,
     },

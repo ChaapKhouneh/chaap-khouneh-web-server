@@ -210,7 +210,7 @@ export const lists: Lists = {
             requestData: {
               LoginAccount: '1cVFr74Se4m8yHO0fAjW',
               OrderId: resolvedData.paymentAuthority, // paymentAuthority
-              Amount: resolvedData.totalPrice ?? 0 * 10,
+              Amount: <number>(resolvedData.totalPrice ?? 0) * 10,
               CallBackUrl: 'https://chaapkhouneh.ir/api/payment-callback',
               AdditionalData: '',
               Originator: resolvedData.AddressInfo?.create?.fullName,
