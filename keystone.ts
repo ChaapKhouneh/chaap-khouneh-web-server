@@ -41,7 +41,7 @@ export default withAuth(
           const TerminalNo = req.body.TerminalNo;
           const RRN = BigInt(req.body.RRN);
           const status = Number(req.body.status);
-          const AmountAsString = req.body.Amount;
+          const AmountAsString = req.body.Amount.replaceAll(/,/g, '');
           const Amount = BigInt(AmountAsString.slice(0, AmountAsString.length - 1));
           // const SwAmount = BigInt(req.body.SwAmount);
           const HashCardNumber = req.body.HashCardNumber;
