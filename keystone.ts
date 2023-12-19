@@ -94,13 +94,13 @@ export default withAuth(
               // confirm payment
               const parsianConfirmURL = 'https://pec.shaparak.ir/NewIPGServices/Confirm/ConfirmService.asmx?wsdl';
               const soapClient = await soap.createClientAsync(parsianConfirmURL);
-              const soapResponse = await soapClient.SalePaymentRequestAsync({
+              const soapResponse = await soapClient.ConfirmPaymentAsync({
                 requestData: {
                   LoginAccount: '1cVFr74Se4m8yHO0fAjW',
                   Token,
                 }
               });
-              const confirmResponse = soapResponse[0].SalePaymentRequestResult;
+              const confirmResponse = soapResponse[0].ConfirmPaymentResult;
               console.log({ confirmResponse });
 
               await context.db.ParsianPaymentInfo.updateOne({
