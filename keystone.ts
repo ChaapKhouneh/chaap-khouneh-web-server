@@ -92,8 +92,8 @@ export default withAuth(
               && relatedOrder.totalPrice == Amount) {
               console.log('every thing ok');
               // confirm payment
-              const parsianURL = 'https://pec.shaparak.ir/NewIPGServices/Sale/SaleService.asmx?wsdl';
-              const soapClient = await soap.createClientAsync(parsianURL);
+              const parsianConfirmURL = 'https://pec.shaparak.ir/NewIPGServices/Confirm/ConfirmService.asmx?wsdl';
+              const soapClient = await soap.createClientAsync(parsianConfirmURL);
               const soapResponse = await soapClient.SalePaymentRequestAsync({
                 requestData: {
                   LoginAccount: '1cVFr74Se4m8yHO0fAjW',
