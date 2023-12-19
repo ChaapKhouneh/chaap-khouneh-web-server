@@ -116,7 +116,7 @@ export default withAuth(
               await context.db.Order.updateOne({
                 where: { id: relatedOrder.id },
                 data: {
-                  status: ORDER_STATE.PAYED,
+                  status: ORDER_STATE[ORDER_STATE.PAYED],
                 },
               });
 

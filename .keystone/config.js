@@ -469,15 +469,15 @@ var keystone_default = withAuth(
             });
             if (relatedOrder && relatedParsianPaymentInfo && relatedOrder.status === ORDER_STATE[0 /* WAITING_FOR_PAYMENT */] && relatedOrder.totalPrice == Amount) {
               console.log("every thing ok");
-              const parsianURL = "https://pec.shaparak.ir/NewIPGServices/Sale/SaleService.asmx?wsdl";
-              const soapClient = await soap2.createClientAsync(parsianURL);
-              const soapResponse = await soapClient.SalePaymentRequestAsync({
+              const parsianConfirmURL = "https://pec.shaparak.ir/NewIPGServices/Confirm/ConfirmService.asmx?wsdl";
+              const soapClient = await soap2.createClientAsync(parsianConfirmURL);
+              const soapResponse = await soapClient.ConfirmPaymentAsync({
                 requestData: {
                   LoginAccount: "1cVFr74Se4m8yHO0fAjW",
                   Token
                 }
               });
-              const confirmResponse = soapResponse[0].SalePaymentRequestResult;
+              const confirmResponse = soapResponse[0].ConfirmPaymentResult;
               console.log({ confirmResponse });
               await context.db.ParsianPaymentInfo.updateOne({
                 where: { id: relatedParsianPaymentInfo.id },
@@ -491,7 +491,7 @@ var keystone_default = withAuth(
               await context.db.Order.updateOne({
                 where: { id: relatedOrder.id },
                 data: {
-                  status: 1 /* PAYED */
+                  status: ORDER_STATE[1 /* PAYED */]
                 }
               });
               res.redirect("https://chaapkhouneh.ir/pay");
