@@ -187,55 +187,57 @@ export const lists: Lists = {
       ParsianPaymentInfo: relationship({ ref: 'ParsianPaymentInfo.Order', many: false }),
     },
     hooks: {
-      resolveInput: async ({ resolvedData, context }) => {
-        // const sudoContext = context.sudo();
-        // const lastPaymentAuthority = (await sudoContext.db.Order.findMany({
-        //   orderBy: {
-        //     paymentAuthority: 'desc',
-        //   },
-        //   take: 1,
-        // }))[0]?.paymentAuthority;
-        // resolvedData.paymentAuthority = lastPaymentAuthority ? lastPaymentAuthority + 1 : '1';
-        // resolvedData.paymentAuthority = createRandomString(5);
-        // FIXME: Date.now() is not safe
-        resolvedData.paymentAuthority = <any>BigInt(Date.now());
+      resolveInput: async ({ resolvedData, context, operation }) => {
+        if (operation === 'create') {
+          // const sudoContext = context.sudo();
+          // const lastPaymentAuthority = (await sudoContext.db.Order.findMany({
+          //   orderBy: {
+          //     paymentAuthority: 'desc',
+          //   },
+          //   take: 1,
+          // }))[0]?.paymentAuthority;
+          // resolvedData.paymentAuthority = lastPaymentAuthority ? lastPaymentAuthority + 1 : '1';
+          // resolvedData.paymentAuthority = createRandomString(5);
+          // FIXME: Date.now() is not safe
+          resolvedData.paymentAuthority = <any>BigInt(Date.now());
 
-        console.log(process.env.NODE_ENV);
-        let createResponse;
-        if (process.env.NODE_ENV === 'production') {
-          // create order in parsian
-          const parsianURL = 'https://pec.shaparak.ir/NewIPGServices/Sale/SaleService.asmx?wsdl';
-          const soapClient = await soap.createClientAsync(parsianURL);
-          const soapResponse = await soapClient.SalePaymentRequestAsync({
-            requestData: {
-              LoginAccount: '1cVFr74Se4m8yHO0fAjW',
-              OrderId: resolvedData.paymentAuthority, // paymentAuthority
-              Amount: <number>(resolvedData.totalPrice ?? 0) * 10,
-              CallBackUrl: 'https://chaapkhouneh.ir/api/payment-callback',
-              AdditionalData: '',
-              Originator: resolvedData.AddressInfo?.create?.fullName,
-            }
-          });
-          createResponse = soapResponse[0].SalePaymentRequestResult;
-        }
-        else {
-          createResponse = { Token: 261577301770039, Message: 'عملیات موفق', Status: 0 };
-        }
-
-        console.log({
-          createResponse,
-        });
-
-        if (createResponse.Status != 0) {
-          throw new Error(createResponse.Message);
-        }
-        resolvedData.ParsianPaymentInfo = {
-          create: {
-            createResponseMessage: createResponse.Message,
-            createResponseStatus: createResponse.Status,
-            createResponseToken: createResponse.Token,
+          console.log(process.env.NODE_ENV);
+          let createResponse;
+          if (process.env.NODE_ENV === 'production') {
+            // create order in parsian
+            const parsianURL = 'https://pec.shaparak.ir/NewIPGServices/Sale/SaleService.asmx?wsdl';
+            const soapClient = await soap.createClientAsync(parsianURL);
+            const soapResponse = await soapClient.SalePaymentRequestAsync({
+              requestData: {
+                LoginAccount: '1cVFr74Se4m8yHO0fAjW',
+                OrderId: resolvedData.paymentAuthority, // paymentAuthority
+                Amount: <number>(resolvedData.totalPrice ?? 0) * 10,
+                CallBackUrl: 'https://chaapkhouneh.ir/api/payment-callback',
+                AdditionalData: '',
+                Originator: resolvedData.AddressInfo?.create?.fullName,
+              }
+            });
+            createResponse = soapResponse[0].SalePaymentRequestResult;
           }
-        };
+          else {
+            createResponse = { Token: 261577301770039, Message: 'عملیات موفق', Status: 0 };
+          }
+
+          console.log({
+            createResponse,
+          });
+
+          if (createResponse.Status != 0) {
+            throw new Error(createResponse.Message);
+          }
+          resolvedData.ParsianPaymentInfo = {
+            create: {
+              createResponseMessage: createResponse.Message,
+              createResponseStatus: createResponse.Status,
+              createResponseToken: createResponse.Token,
+            }
+          };
+        }
 
         return resolvedData;
       }
