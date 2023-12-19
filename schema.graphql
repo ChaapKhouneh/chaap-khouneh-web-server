@@ -615,7 +615,7 @@ type ParsianPaymentInfo {
   createResponseMessage: String
   createResponseToken: BigInt
   callbackToken: BigInt
-  callbackOrderId: String
+  callbackOrderId: BigInt
   callbackTerminalNumber: BigInt
   callbackRRN: BigInt
   callbackStatus: Int
@@ -645,7 +645,7 @@ input ParsianPaymentInfoWhereInput {
   createResponseMessage: StringFilter
   createResponseToken: BigIntNullableFilter
   callbackToken: BigIntNullableFilter
-  callbackOrderId: StringFilter
+  callbackOrderId: BigIntNullableFilter
   callbackTerminalNumber: BigIntNullableFilter
   callbackRRN: BigIntNullableFilter
   callbackStatus: IntNullableFilter
@@ -689,7 +689,7 @@ input ParsianPaymentInfoUpdateInput {
   createResponseMessage: String
   createResponseToken: BigInt
   callbackToken: BigInt
-  callbackOrderId: String
+  callbackOrderId: BigInt
   callbackTerminalNumber: BigInt
   callbackRRN: BigInt
   callbackStatus: Int
@@ -716,7 +716,7 @@ input ParsianPaymentInfoCreateInput {
   createResponseMessage: String
   createResponseToken: BigInt
   callbackToken: BigInt
-  callbackOrderId: String
+  callbackOrderId: BigInt
   callbackTerminalNumber: BigInt
   callbackRRN: BigInt
   callbackStatus: Int

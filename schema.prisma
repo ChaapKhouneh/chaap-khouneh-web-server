@@ -92,7 +92,7 @@ model ParsianPaymentInfo {
   createResponseMessage           String  @default("")
   createResponseToken             BigInt?
   callbackToken                   BigInt?
-  callbackOrderId                 String  @default("")
+  callbackOrderId                 BigInt?
   callbackTerminalNumber          BigInt?
   callbackRRN                     BigInt?
   callbackStatus                  Int?

@@ -324,7 +324,7 @@ export const lists: Lists = {
       //#endregion
       //#region callback
       callbackToken: bigInt(),
-      callbackOrderId: text(),
+      callbackOrderId: bigInt(),
       callbackTerminalNumber: bigInt(),
       // status = 0 and RRN > 0 || status = -138
       callbackRRN: bigInt(),
